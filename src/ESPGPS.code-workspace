@@ -1,0 +1,30 @@
+{
+	"folders": [
+		{
+			"name": "ESPGPS",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"java.project.sourcePaths": [
+			"src"
+		],
+		"java.project.referencedLibraries": [
+			"lib\\javafx.base.jar",
+			"lib\\javafx.controls.jar",
+			"lib\\javafx.fxml.jar",
+			"lib\\javafx.graphics.jar",
+			"lib\\javafx.media.jar",
+			"lib\\javafx.swing.jar",
+			"lib\\javafx.web.jar",
+			"lib\\javafx-swt.jar",
+			"lib\\jdk.jsobject.jar",
+			"lib\\jfx.incubator.input.jar",
+			"lib\\jfx.incubator.richtext.jar",
+			"lib\\junit-platform-console-standalone-1.12.0.jar",
+			"lib\\gson-2.13.0.jar"
+		],
+		"java.project.outputPath": "bin",
+		"java.debug.settings.vmArgs": "-ea --enable-preview --module-path ./lib/ --add-modules \"javafx.controls,javafx.fxml\""
+	}
+}
