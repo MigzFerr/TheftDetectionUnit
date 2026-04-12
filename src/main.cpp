@@ -1,15 +1,8 @@
 
 #include <Arduino.h>
+#include "modem.h"
+#include "pins.h"
 
-#define UART_BAUD 115200
-#define MODEM_DTR_PIN 7
-#define MODEM_TXD_PIN 17
-#define MODEM_RXD_PIN 18
-#define MODEM_PWR_PIN 15
-#define BOARD_POWER_ON 12
-
-#define SerialAT Serial1
-#define SerialMon Serial
 
 #define TINY_GSM_MODEM_SIM7600
 #define TINY_GSM_RX_BUFFER 1024
@@ -17,23 +10,7 @@
 #include <TinyGsm.h>
 TinyGsm modem(SerialAT);
  HardwareSerial GPS2Serial(2);
-void powerModem() { 
-    // Keep BOARD_POWER_ON HIGH
-    pinMode(BOARD_POWER_ON, OUTPUT);
-    digitalWrite(BOARD_POWER_ON, HIGH);
-
-    // PWR_KEY pulse
-    pinMode(MODEM_PWR_PIN, OUTPUT);
-    digitalWrite(MODEM_PWR_PIN, LOW);
-    delay(100);
-    digitalWrite(MODEM_PWR_PIN, HIGH);
-    delay(1200); // 1.2s HIGH pulse
-    digitalWrite(MODEM_PWR_PIN, LOW);
-
-    // Optional: DTR / RST
-    pinMode(MODEM_DTR_PIN, OUTPUT);
-    digitalWrite(MODEM_DTR_PIN, LOW);
-}   
+ 
 
 void setup() {
     SerialMon.begin(115200);
