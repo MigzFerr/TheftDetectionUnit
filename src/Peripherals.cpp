@@ -8,7 +8,6 @@
   #include <DFRobot_BMI160.h>
 TinyGPSPlus gps;
 BLEScan* pBLEScan;
-volatile bool phonePresent = false;
 volatile bool scanDone = false;
 volatile int foundRSSI = 0;
 
@@ -73,47 +72,96 @@ void externalGPSData() {
         SerialMon.print("Lat: ");       SerialMon.println(gps.location.lat(), 6);
         SerialMon.print("Lng: ");       SerialMon.println(gps.location.lng(), 6);
         SerialMon.print("Satellites: "); SerialMon.println(gps.satellites.value());
-        SerialMon.print("Speed km/h: "); SerialMon.println(gps.speed.kmph());
-        SerialMon.print("Altitude m: "); SerialMon.println(gps.altitude.meters());
+         SerialMon.print("Time: ");SerialMon.println(gps.date.day()); SerialMon.println(gps.time.hour()); SerialMon.println(gps.time.minute());SerialMon.println(gps.time.second());
+         SerialMon.print("link quality: "); SerialMon.println(gps.location.FixQuality(),6);
     } else {
         SerialMon.println("No fix yet...");
     }
 }
-
 void internalGPSData() {
+
+    //COURTESY OF AI, TEST CODE TO ENSURE INTERNAL CAN PROVIDE USEFUL DATA COMPARED TO EXTERNAL
     SerialMon.println("--- Internal GPS (A7608) ---");
     SerialAT.println("AT+CGNSSINFO");
 
     unsigned long start = millis();
+
     while (millis() - start < 5000) {
         if (modem.stream.available()) {
+
             String line = modem.stream.readStringUntil('\n');
             line.trim();
             if (line.length() == 0) continue;
 
             if (line.startsWith("+CGNSSINFO:")) {
+
                 SerialMon.println(line);
 
-                int firstComma  = line.indexOf(',');
-                int secondComma = line.indexOf(',', firstComma + 1);
-                int thirdComma  = line.indexOf(',', secondComma + 1);
+                // --- Split CSV fields ---
+                // we will parse manually step-by-step
+                int idx[20];
+                int count = 0;
 
-                if (firstComma != -1 && secondComma != -1 && thirdComma != -1) {
-                    int gpsS = line.substring(firstComma + 1, secondComma).toInt();
-                    int glo  = line.substring(secondComma + 1, thirdComma).toInt();
-                    int bds  = line.substring(thirdComma + 1, line.indexOf(',', thirdComma + 1)).toInt();
-
-                    if (gpsS + glo + bds > 0) {
-                        SerialMon.print("Satellites: ");
-                        SerialMon.print("GPS=");     SerialMon.print(gpsS);
-                        SerialMon.print(" GLONASS="); SerialMon.print(glo);
-                        SerialMon.print(" BEIDOU=");  SerialMon.println(bds);
-                    }
+                idx[count++] = line.indexOf(':');
+                for (int i = 0; i < 18; i++) {
+                    int next = line.indexOf(',', idx[count - 1] + 1);
+                    if (next == -1) break;
+                    idx[count++] = next;
                 }
-            } else if (line.startsWith("OK") || line.startsWith("ERROR")) {
-                // ignore
-            } else {
-                SerialMon.println("Raw: " + line);
+
+                auto field = [&](int n) -> String {
+                    int start = (n == 0) ? line.indexOf(':') + 1 : idx[n - 1] + 1;
+                    int end   = (n < count) ? idx[n] : line.length();
+                    return line.substring(start, end);
+                };
+
+                // --- Extract key values ---
+                int gpsSats = field(1).toInt();
+                int gloSats = field(2).toInt();
+                int bdsSats = field(3).toInt();
+
+                String lat  = field(4);
+                String ns   = field(5);
+                String lon  = field(6);
+                String ew   = field(7);
+
+                float speed = field(8).toFloat();
+                float course = field(9).toFloat();
+
+                String date = field(10); // usually DDMMYY
+                String time = field(11); // HHMMSS.S
+
+                float hdop = field(12).toFloat();
+                float alt  = field(13).toFloat();
+
+                int fix = field(14).toInt();
+
+                // --- Print clean output ---
+                SerialMon.println("---- Parsed GNSS ----");
+
+                SerialMon.printf("Satellites: GPS=%d GLONASS=%d BEIDOU=%d\n",
+                                 gpsSats, gloSats, bdsSats);
+
+                SerialMon.print("Lat: "); SerialMon.print(lat); SerialMon.println(ns);
+                SerialMon.print("Lon: "); SerialMon.print(lon); SerialMon.println(ew);
+
+                SerialMon.print("Speed (km/h): "); SerialMon.println(speed);
+                SerialMon.print("Course (deg): "); SerialMon.println(course);
+
+                SerialMon.print("Date: "); SerialMon.println(date);
+                SerialMon.print("Time: "); SerialMon.println(time);
+
+                SerialMon.print("HDOP: "); SerialMon.println(hdop);
+                SerialMon.print("Altitude: "); SerialMon.println(alt);
+
+                SerialMon.print("Fix: "); SerialMon.println(fix);
+
+                // --- Example: useful derived logic ---
+                if (fix > 0 && gpsSats + gloSats + bdsSats >= 4 && hdop < 5.0) {
+                    SerialMon.println("✔ GOOD FIX");
+                } else {
+                    SerialMon.println("✖ WEAK FIX");
+                }
             }
         }
     }
@@ -122,7 +170,6 @@ void internalGPSData() {
 class ScanCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
         if (advertisedDevice.getName() == "NP3A-Miguel") {
-            phonePresent = true;
             foundRSSI = advertisedDevice.getRSSI();
     phoneDetectedAt = millis();  // update timestamp
 }

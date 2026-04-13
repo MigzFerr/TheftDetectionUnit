@@ -8,14 +8,22 @@
  #include <BLEScan.h>   
 #include <BLEAdvertisedDevice.h> 
 
-#define PHONEDETECTIONCOOLDOWN 120000
+#define PHONEDETECTIONCOOLDOWN 5000
 #define MESSAGEDELAY 60000
-float SHAKETOLERANCE = 0.1;
- unsigned long phoneDetectedAt=0;
+float SHAKETOLERANCE = 0.08;
+unsigned long phoneDetectedAt=0;
 unsigned long messageSentAt=0;
 float offsetCalib = 0;
-bool ignition=true;//change to method detection once proto/built
 
+struct GPSData{
+int32_t lat; 
+int32_t lon;
+uint8_t sats;
+ uint16_t dayIndex; 
+uint32_t secondsSinceMidnight; 
+
+const char* sourceSat;
+};
 
 
 bool ownerNear(){
@@ -34,7 +42,11 @@ offsetCalib=((offsetCalib/100)-1);
 void sendAlert(){
 }
 
-
+bool ignition(){
+return false;
+}
+void GPSManager(){
+}
 
 void setup() {
     SerialMon.begin(115200);
@@ -44,9 +56,10 @@ void setup() {
   setupBMI();
   calibrateBMI();
 }
+
 void loop() {
-//sentry mode- if no phone near and bike isn't on, check for movement- if movement then alert!
-  if(ignition==false && !phonePresent){
+//sentry mode- if no phone near  check for movement- if movement then alert depending on if bike is on or off!
+  if(!ownerNear()){
     float magAccelAvg=0;
 for (int avgCount= 0; avgCount<30; avgCount++){
 magAccelAvg+=getBMIData();
@@ -55,10 +68,20 @@ delay(10);
 magAccelAvg=magAccelAvg/30;
 
 if(abs(magAccelAvg-1-offsetCalib)>SHAKETOLERANCE){
-sendAlert();
+  if(!ignition){
+    sendAlert();//Send higher priority alert!
+  }else{
+sendAlert();//lower priority alert, ie are you aware bike being moved possibly?
+  }
+
+
+Serial.println("Movement threshold met");
 }
-Serial.println("acceleration I think");
+//curent magnitude of force on sensor, without gravity.
 Serial.println(abs(magAccelAvg-1-offsetCalib));
+  }else{
+    Serial.println("nothing yet!");
+    delay(200);
   }
 /*
 if phone detected once, have a cooldown period between phone detection and theft detection- dont alert user for a couple minutes
@@ -70,6 +93,7 @@ If bike is shaken and phone nor key are present then send special alert to user
 */
 
 
-//externalGPSData();
+externalGPSData();
+internalGPSData();
 }
 
