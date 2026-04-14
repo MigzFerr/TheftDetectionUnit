@@ -3,8 +3,6 @@
 #include <Arduino.h>
 #include <TinyGPS++.h>
 #include "BLEDevice.h"
-#include <BLEAdvertising.h>
-#include <BLEScan.h>
 #include <DFRobot_BMI160.h>
 TinyGPSPlus gps;
 BLEScan *pBLEScan;
