@@ -7,6 +7,8 @@
 #include "pins.h"
 static unsigned long lastBMICheck = 0;
 static unsigned long lastGPSCheck = 0;
+static unsigned long validateBMICheck = 0;
+ bool enableMovementDetection=false;
 void setup()
 {
   SerialMon.begin(115200);
@@ -18,7 +20,7 @@ void setup()
 }
 
 void loop()
-{
+{   
     if (millis() - lastBMICheck > 100)
     {
         checkBMIMovement();
@@ -29,4 +31,10 @@ void loop()
         checkGPSMovement();
         lastGPSCheck = millis();
     }
+    if(enableMovementDetection){
+if(millis() -validateBMICheck>10){
+      movementDetection();
+    validateBMICheck=millis();
+    }
+}
 }
