@@ -1,14 +1,18 @@
 
 
-    //TOWRITE: AT COMMANDS ETC FOR CONNECTING MODEM TO NETWORK, THEN WRITE METHOD/CLASS FOR SENDING ALERTS
-    //POLISH AND TEST SYSTEM MANAGER STUFF
+// TOWRITE: AT COMMANDS ETC FOR CONNECTING MODEM TO NETWORK, THEN WRITE METHOD/CLASS FOR SENDING ALERTS
+// POLISH AND TEST SYSTEM MANAGER STUFF
 #include "peripherals.h"
 #include "SystemManager.h"
 #include "pins.h"
 static unsigned long lastBMICheck = 0;
 static unsigned long lastGPSCheck = 0;
+static unsigned long lastSecurityStateCheck = 0;
+static unsigned long lastMessageSent = 0;
 static unsigned long validateBMICheck = 0;
- bool enableMovementDetection=false;
+unsigned long GPSCheckDelay = 30000;
+bool enableMovementDetection = false;
+bool enableSecurityChecks = true;
 void setup()
 {
   SerialMon.begin(115200);
@@ -20,21 +24,39 @@ void setup()
 }
 
 void loop()
-{   
+{
+  updateGPS();
+  checkPresence();
+  Serial.println(millis() / 1000.0);
+  if (enableMovementDetection)
+  {
     if (millis() - lastBMICheck > 100)
     {
-        checkBMIMovement();
-        lastBMICheck = millis();
+      checkBMIMovement();
+      lastBMICheck = millis();
     }
-     if (millis() - lastGPSCheck > 600000)
+    if (millis() - lastGPSCheck > GPSCheckDelay)
     {
-        checkGPSMovement();
-        lastGPSCheck = millis();
+      checkGPSMovement();
+      lastGPSCheck = millis();
     }
-    if(enableMovementDetection){
-if(millis() -validateBMICheck>10){
-      movementDetection();
-    validateBMICheck=millis();
+    if (enableMovementDetection)
+    {
+      if (millis() - validateBMICheck > 10)
+      {
+        movementDetection();
+        validateBMICheck = millis();
+      }
     }
+  }
+  if (millis() - lastMessageSent > 8.64e+7)
+  {
+    lastMessageSent=millis();
+    sendAlert(8);
+  }
+if (millis() - lastSecurityStateCheck > 5000){
+  lastSecurityStateCheck=millis(); 
+  updateGPSCheckSpeed();
 }
 }
+

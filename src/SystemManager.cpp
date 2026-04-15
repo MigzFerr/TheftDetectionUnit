@@ -3,8 +3,11 @@
 #include "peripherals.h"
 
 #define PHONEDETECTIONCOOLDOWN 5000
+#define IMUCOOLDOWN 300000
+#define GPSCOOLDOWN 300000
 #define MESSAGEDELAY 60000
-#define BikeMovedCooldown 300000
+
+#define GPSDataEntries 8640
 GPSData buffer[GPSDataEntries];
 uint16_t head = 0;
 bool GPSDataFilled = false;
@@ -12,9 +15,9 @@ float SHAKETOLERANCE = 0.08;
 unsigned long phoneDetectedAt = 0;
 unsigned long messageSentAt = 0;
 float offsetCalib = 0;
-int GPSSampleDelay = 30000;
-bool bikeMovedGPS = false;
-bool IMUMoved = false;
+static unsigned long IMUMovement = 0;
+static unsigned long GPSEvent = 0;
+ static int gpsMoveCounter = 0;
 void calibrateBMI()
 {
     offsetCalib = 0;
@@ -26,15 +29,6 @@ void calibrateBMI()
     offsetCalib = ((offsetCalib / 100) - 1);
 }
 
-void securityControl()
-{
-    // first check if the bike has ... Finish another day
-}
-
-void sendAlert()
-{
-}
-
 bool ignition()
 {
     return false;
@@ -43,63 +37,121 @@ bool ownerNear()
 {
     return (millis() - phoneDetectedAt < PHONEDETECTIONCOOLDOWN);
 }
+bool IMUMoved(){
+    return (millis()- IMUMovement < IMUCOOLDOWN);
+}
+bool GPSMoved(){
+     return (millis()- GPSEvent < GPSCOOLDOWN);
+}
 
-void movementDetection()
+void checkPresence()
 {
-    if (!ownerNear())
-    { // sentry mode- if no phone near  check for movement- if movement then alert depending on if bike is on or off!
+    if (ownerNear())
+    {
+        enableMovementDetection = false;
+        return;
+    }
+        enableMovementDetection = true;
+}
 
-        static float magAccelSum = 0;
-        static int loopCount=0;
-            magAccelSum += getBMIData();
-            loopCount++;
-       
-        if(loopCount>=30)
-        {
-            float avg = magAccelSum/30.0;
-        if ((fabs(avg  - 1 - offsetCalib) > SHAKETOLERANCE) )
-        {
-           IMUMoved=true;
-           
-            Serial.println("Movement threshold met");
+void sendAlert(int level)
+{
+    switch(level){
+        
+    }
+}
+
+void securityControl()
+{
+    if (!ownerNear()){
+    if(IMUMoved()){
+
+        if(!ignition){
+        sendAlert(1);
+        }else{
+        sendAlert(0);
         }
-    enableMovementDetection=false;
-    loopCount=0;
-    magAccelSum=0;     
+    }
+    if(GPSMoved()){
+        if(!ignition){
+    sendAlert(4);
+    }else{sendAlert(3);
+    }
+
+
     }
 }
 }
+
+void updateGPSCheckSpeed(){
+    GPSCheckDelay = ownerNear() ? 100000 : (GPSMoved() ? 500 : 30000);
+}
+
+
+void movementDetection()
+{
+   
+     // sentry mode- if no phone near  check for movement- if movement then alert depending on if bike is on or off!
+
+        static float magAccelSum = 0;
+        static int loopCount = 0;
+        magAccelSum += getBMIData();
+        loopCount++;
+
+        if (loopCount >= 30)
+        {
+            float avg = magAccelSum / 30.0;
+            if ((fabs(avg - 1 - offsetCalib) > SHAKETOLERANCE))
+            {
+                IMUMovement = millis();
+
+                Serial.println("Movement threshold met");
+            }
+            enableMovementDetection = false;
+            loopCount = 0;
+            magAccelSum = 0;
+        }
+    }
 
 void checkBMIMovement()
 {
     if (!enableMovementDetection && (fabs(getBMIData() - 1 - offsetCalib) > SHAKETOLERANCE))
     {
-        enableMovementDetection=true;
+        enableMovementDetection = true;
     }
 }
+
 void checkGPSMovement()
 {
 
-    GPSData GPSPosition = getGPSReading();
+    GPSData GPSPosition = externalGPSData();
+    if (!GPSPosition.isValid || GPSPosition.sats<4)
+    {
+        return;
+    }
     if (head == 0 && !GPSDataFilled)
     {
         checkToAdd(GPSPosition);
         return;
     }
     uint16_t last = (head == 0) ? (GPSDataEntries - 1) : (head - 1);
-    if (gps.distanceBetween(buffer[last].lat, buffer[last].lon, GPSPosition.lat, GPSPosition.lon) > 5)
+    float dist = gps.distanceBetween(buffer[last].lat/1e7, buffer[last].lon/1e7, GPSPosition.lat/1e7, GPSPosition.lon/1e7);
+
+    if (dist > 5)
     {
-        bikeAlarmed = true;
-        checkToAdd(GPSPosition);
-        bikeMovedGPS = true;
-        return;
+        gpsMoveCounter++;
     }
+    else{
+         gpsMoveCounter = 0;
+    }
+    if (gpsMoveCounter >= 3)
+{
+    GPSEvent = millis();
+    gpsMoveCounter = 0;
+}
     checkToAdd(GPSPosition);
 }
 
-GPSData getGPSReading()
-{
-}
 void sendGPSData(GPSData &GPSPosition)
 {
 }
@@ -117,9 +169,10 @@ void checkToAdd(GPSData &GPSPosition)
         return;
     }
     uint16_t last = (head == 0) ? (GPSDataEntries - 1) : (head - 1);
-    if (gps.distanceBetween(buffer[last].lat, buffer[last].lon, GPSPosition.lat, GPSPosition.lon) < 5 && !bikeAlarmed)
+    if (gps.distanceBetween(buffer[last].lat/1e7, buffer[last].lon/1e7, GPSPosition.lat/1e7, GPSPosition.lon/1e7) < 2)
     {
-        buffer[last] = GPSPosition;
+        buffer[last].dayIndex = GPSPosition.dayIndex;
+           buffer[last].secondsSinceMidnight = GPSPosition.secondsSinceMidnight;
     }
     else
     {

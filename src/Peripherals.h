@@ -2,6 +2,7 @@
 #define PERIHPHERALS_H
 #include <Arduino.h>
 #include <TinyGPS++.h>
+#include "SystemManager.h"
 extern TinyGPSPlus gps;
 extern volatile bool scanDone;
 extern volatile int foundRSSI;
@@ -11,8 +12,8 @@ extern volatile bool bikeAlarmed;
 void setupBLE();
 void powerModem();
 void initModemAndGPS();
-void externalGPSData();
-void internalGPSData();
+void updateGPS();
+GPSData externalGPSData();
 void setupBMI();
 float getBMIData();
 void printBMIData();

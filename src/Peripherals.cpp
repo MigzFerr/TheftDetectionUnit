@@ -61,38 +61,43 @@ void initModemAndGPS()
     }
     ESP.restart();
 }
-
-void externalGPSData()
+void updateGPS()
 {
-    SerialMon.println("--- External GPS (M10Q) ---");
-    unsigned long start = millis();
-    while (millis() - start < 5000)
+    while (ExtGpsSerial.available())
     {
-        while (ExtGpsSerial.available())
-        {
-            gps.encode(ExtGpsSerial.read()); // feed NMEA chars to TinyGPS++
-        }
+        gps.encode(ExtGpsSerial.read());
     }
-    if (gps.location.isValid())
-    {
+}
+GPSData externalGPSData()
+{
+    GPSData sendData;
+    if(!gps.location.isValid()){
+        sendData.isValid=false; 
+        return sendData;
+    }
+    SerialMon.println("--- External GPS (M10Q) ---");
+      
+    
         SerialMon.print("Lat: ");
         SerialMon.println(gps.location.lat(), 6);
+        sendData.lat=(gps.location.lat()* 1e7);
         SerialMon.print("Lng: ");
         SerialMon.println(gps.location.lng(), 6);
+        sendData.lon=(gps.location.lng()* 1e7);
         SerialMon.print("Satellites: ");
         SerialMon.println(gps.satellites.value());
+         sendData.sats=(gps.satellites.value());
         SerialMon.print("Time: ");
         SerialMon.println(gps.date.day());
         SerialMon.println(gps.time.hour());
         SerialMon.println(gps.time.minute());
         SerialMon.println(gps.time.second());
+        sendData.dayIndex=(gps.date.day());
+        sendData.secondsSinceMidnight=(gps.time.hour() * 3600  + gps.time.minute() * 60 + gps.time.second());
         SerialMon.print("HDOP: ");
         SerialMon.println(gps.hdop.value());
-    }
-    else
-    {
-        SerialMon.println("No fix yet...");
-    }
+        sendData.hdop=gps.hdop.value();
+        return sendData;
 }
 
 class ScanCallbacks : public BLEAdvertisedDeviceCallbacks
