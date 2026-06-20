@@ -27,10 +27,10 @@ void loop()
 {
   updateGPS();
   checkPresence();
-  Serial.println(millis() / 1000.0);
+ 
   if (enableMovementDetection)
   {
-    if (millis() - lastBMICheck > 100)
+    if (millis() - lastBMICheck > 50)
     {
       checkBMIMovement();
       lastBMICheck = millis();

@@ -17,6 +17,7 @@ struct GPSData
   uint8_t dayIndex;
   bool isValid;
 };
+void printShake();
 bool ownerNear();
 void calibrateBMI();
 void checkBMIMovement();

@@ -8,7 +8,7 @@ extern volatile bool scanDone;
 extern volatile int foundRSSI;
 extern unsigned long phoneDetectedAt;
 extern volatile bool bikeAlarmed;
-
+void sendNtfy();
 void setupBLE();
 void powerModem();
 void initModemAndGPS();

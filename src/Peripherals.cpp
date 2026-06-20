@@ -29,9 +29,55 @@ void powerModem()
 #define TINY_GSM_RX_BUFFER 1024
 #define TINY_GSM_DEBUG SerialMon
 #include <TinyGsm.h>
+#include <TinyGsmClient.h>
 TinyGsm modem(SerialAT);
+TinyGsmClient client(modem);
 HardwareSerial ExtGpsSerial(2);
 DFRobot_BMI160 bmi160;
+
+void setSim(){
+    
+    for (int attempt = 0; attempt < 5; attempt++)
+    {
+   modem.waitForNetwork();
+    modem.gprsConnect("https://iot.truphone.com/login/?next=/"); 
+    if (modem.isGprsConnected()) {
+        Serial.println("Connected!");
+        Serial.println(modem.localIP());
+        Serial.print("Network: ");
+Serial.println(modem.isNetworkConnected());
+
+Serial.print("GPRS: ");
+Serial.println(modem.isGprsConnected());
+sendNtfy();
+        return;
+    } else {
+        Serial.println("Connection failed!");
+        delay(1000);
+    }
+    }
+}
+void sendNtfy()
+{
+
+    if (!client.connect("ntfy.sh", 80)) {
+        Serial.println("Connection failed");
+        return;
+    }
+
+    String message = "Bike moved!";
+
+    client.println("POST /Bike_tracker_alerts HTTP/1.1");
+    client.println("Host: ntfy.sh");
+    client.println("Content-Type: text/plain");
+    client.print("Content-Length: ");
+    client.println(message.length());
+    client.println();
+    client.print(message);
+
+    Serial.println("Message sent!");
+    modem.sleepEnable();
+}
 
 void initModemAndGPS()
 {
@@ -55,6 +101,7 @@ void initModemAndGPS()
             SerialMon.println("Modem connected");
             SerialMon.print("Modem Info: ");
             SerialMon.println(modem.getModemInfo());
+            setSim();
             return;
         }
         SerialMon.println("No response. Retrying connection");
