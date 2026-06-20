@@ -50,9 +50,9 @@ void loop()
     }
   }
   if (millis() - lastMessageSent > 8.64e+7)
-  {
+  { 
+    manageAlert(4);
     lastMessageSent=millis();
-    sendAlert(8);
   }
 if (millis() - lastSecurityStateCheck > 5000){
   lastSecurityStateCheck=millis(); 

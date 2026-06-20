@@ -54,29 +54,51 @@ void checkPresence()
         enableMovementDetection = true;
 }
 
-void sendAlert(int level)
+void manageAlert(int level)
 {
+    char msg[256];
+    char time[256];
+    GPSData pos= latestPosition(); 
+    float lat=pos.lat/1e6; 
+    float lon=pos.lon/1e6;
+    int hour = (int)(pos.secondsSinceMidnight/3600);
+    int min =(int)(pos.secondsSinceMidnight/60);
+sprintf(msg,"Last known position: https://maps.google.com/?q=%.6f,%.6f",lat,lon);
+sprintf(time,", detected at: %d:%d");
     switch(level){
-        
-        
+    case 0: 
+    sendNtfy("movement detected,ignition engaged",time, msg, "grey_question", "default");
+    break;
+    case 1: 
+     sendNtfy("movement detected,no ignition",time, msg, "red_question", "high");
+     break;
+    case 2: 
+    sendNtfy("Bike position moved, ignition engaged",time,msg,"warning", "urgent");
+    break;
+    case 3:
+     sendNtfy("Bike position moved, ignition NOT engaged",time,msg,"warning", "max");
+    break;
+    case 4: 
+      sendNtfy("Bike tracker still active",time,msg,"tick", "low");
+      break;
     }
 }
 
 void securityControl()
 {
+
     if (!ownerNear()){
     if(IMUMoved()){
-
-        if(!ignition){
-        sendAlert(1);
+        if(!ignition()){
+        manageAlert(1);
         }else{
-        sendAlert(0);
+        manageAlert(0);
         }
     }
-    if(GPSMoved()){
-        if(!ignition){
-    sendAlert(4);
-    }else{sendAlert(3);
+    if(GPSMoved()&& latestPosition().isValid){
+        if(!ignition()){
+    manageAlert(3);
+    }else{manageAlert(2);
     }
 
 
@@ -85,7 +107,7 @@ void securityControl()
 }
 
 void updateGPSCheckSpeed(){
-    GPSCheckDelay = ownerNear() ? 100000 : (GPSMoved() ? 500 : 30000);
+    GPSCheckDelay = ownerNear() ? 100000 : (GPSMoved() ? 500 : 5000);
 }
 
 
@@ -105,7 +127,7 @@ void movementDetection()
             if ((fabs(avg - 1 - offsetCalib) > SHAKETOLERANCE))
             {
                 IMUMovement = millis();
-
+                securityControl();
                 Serial.println("Movement threshold met");
             }
             enableMovementDetection = false;
@@ -149,6 +171,7 @@ void checkGPSMovement()
 {
     GPSEvent = millis();
     gpsMoveCounter = 0;
+    securityControl();
 }
     checkToAdd(GPSPosition);
 }
@@ -159,6 +182,13 @@ void sendGPSData(GPSData &GPSPosition)
 
 void retrieveGPSData(int day)
 {
+}
+GPSData latestPosition(){
+    if(head!=0){
+    return buffer[head-1];
+    }
+    return buffer[0];
+
 }
 
 void checkToAdd(GPSData &GPSPosition)

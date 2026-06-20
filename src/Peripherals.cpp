@@ -49,7 +49,7 @@ Serial.println(modem.isNetworkConnected());
 
 Serial.print("GPRS: ");
 Serial.println(modem.isGprsConnected());
-sendNtfy();
+testAlert();
         return;
     } else {
         Serial.println("Connection failed!");
@@ -57,7 +57,16 @@ sendNtfy();
     }
     }
 }
-void sendNtfy()
+void testAlert() {
+    char msg[256];
+    char time[256];
+    sprintf(msg, "Test alert from bike tracker! https://maps.google.com/?q=-36.848461,174.763336");
+    sprintf(time,"11:11");
+    sendNtfy("TEST ALERT",time, msg, "skull", "max");
+    SerialMon.println("Test alert sent!");
+}
+
+void sendNtfy(char* title,char* time, char* message, char* tag, char* priority )
 {
 
     if (!client.connect("ntfy.sh", 80)) {
@@ -65,18 +74,19 @@ void sendNtfy()
         return;
     }
 
-    String message = "Bike moved!";
 
     client.println("POST /Bike_tracker_alerts HTTP/1.1");
     client.println("Host: ntfy.sh");
+    client.print("Title:");   client.print(title);    client.println(time);
+    client.print("Priority:");    client.println(priority); 
+    client.print("Tags:");    client.println(tag);
     client.println("Content-Type: text/plain");
     client.print("Content-Length: ");
-    client.println(message.length());
+    client.println(strlen(message));
     client.println();
     client.print(message);
 
     Serial.println("Message sent!");
-    modem.sleepEnable();
 }
 
 void initModemAndGPS()
@@ -92,7 +102,7 @@ void initModemAndGPS()
         if (attempt == 2)
         {
             powerModem();
-            delay(5000);
+            delay(8000);
         }
         SerialMon.print("Attempting to connect to modem, attempt: ");
         SerialMon.println(attempt);
