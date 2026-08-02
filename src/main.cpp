@@ -21,12 +21,17 @@ void setup()
   initModemAndGPS();
   setupBMI();
   calibrateBMI();
+  setupADC();
+  //pin 10 enable 12V 
+  pinMode(10, OUTPUT);
+    digitalWrite(10, HIGH);
 }
 
 void loop()
 {
-  updateGPS();
-  checkPresence();
+ updateGPS();
+ checkPresence();
+  //getBattLevel();
  
   if (enableMovementDetection)
   {
@@ -58,5 +63,6 @@ if (millis() - lastSecurityStateCheck > 5000){
   lastSecurityStateCheck=millis(); 
   updateGPSCheckSpeed();
 }
+  
 }
 

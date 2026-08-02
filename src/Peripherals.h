@@ -18,4 +18,6 @@ GPSData externalGPSData();
 void setupBMI();
 float getBMIData();
 void printBMIData();
+float getBattVoltage();
+void setupADC();
 #endif

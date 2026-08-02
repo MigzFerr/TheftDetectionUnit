@@ -4,10 +4,17 @@
 #include <TinyGPS++.h>
 #include "BLEDevice.h"
 #include <DFRobot_BMI160.h>
+#include "esp_adc_cal.h"
+
+esp_adc_cal_characteristics_t adc_chars;
 TinyGPSPlus gps;
 BLEScan *pBLEScan;
 volatile bool scanDone = false;
 volatile int foundRSSI = 0;
+void setupADC() {
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, 
+    ADC_WIDTH_BIT_12, 1100, &adc_chars);
+}
 
 void powerModem()
 {
@@ -35,12 +42,25 @@ TinyGsmClient client(modem);
 HardwareSerial ExtGpsSerial(2);
 DFRobot_BMI160 bmi160;
 
+float getBattVoltage() {
+   const int samples = 32;
+    uint32_t total = 0;
+    
+    for (int i = 0; i < samples; i++) {
+        total += analogRead(4);
+        delay(2);
+    }
+    
+    uint32_t raw = total / samples;
+    uint32_t millivolts = esp_adc_cal_raw_to_voltage(raw, &adc_chars);
+    return (millivolts / 1000.0) * 2.0;
+}
 void setSim(){
     
     for (int attempt = 0; attempt < 5; attempt++)
     {
    modem.waitForNetwork();
-    modem.gprsConnect("https://iot.truphone.com/login/?next=/"); 
+    modem.gprsConnect("iot.truphone.com"); 
     if (modem.isGprsConnected()) {
         Serial.println("Connected!");
         Serial.println(modem.localIP());
@@ -60,6 +80,7 @@ testAlert();
 void testAlert() {
     char msg[256];
     char time[256];
+
     sprintf(msg, "Test alert from bike tracker! https://maps.google.com/?q=-36.848461,174.763336");
     sprintf(time,"11:11");
     sendNtfy("TEST ALERT",time, msg, "skull", "max");
@@ -73,6 +94,7 @@ void sendNtfy(char* title,char* time, char* message, char* tag, char* priority )
         Serial.println("Connection failed");
         return;
     }
+   
 
 
     client.println("POST /Bike_tracker_alerts HTTP/1.1");
@@ -85,7 +107,6 @@ void sendNtfy(char* title,char* time, char* message, char* tag, char* priority )
     client.println(strlen(message));
     client.println();
     client.print(message);
-
     Serial.println("Message sent!");
 }
 
@@ -95,7 +116,7 @@ void initModemAndGPS()
     SerialAT.begin(UART_BAUD, SERIAL_8N1, MODEM_RXD_PIN, MODEM_TXD_PIN);
     SerialMon.println("Powering Modem");
     powerModem();
-    delay(2000);
+        delay(2000);             
 
     for (int attempt = 0; attempt < 5; attempt++)
     {
@@ -120,7 +141,7 @@ void initModemAndGPS()
 }
 void updateGPS()
 {
-    while (ExtGpsSerial.available())
+    while(ExtGpsSerial.available())
     {
         gps.encode(ExtGpsSerial.read());
     }
@@ -129,12 +150,13 @@ GPSData externalGPSData()
 {
     GPSData sendData;
     if(!gps.location.isValid()){
-        sendData.isValid=false; 
+        sendData.isValid=false;
+           SerialMon.print("Nothinggg ");
         return sendData;
     }
     SerialMon.println("--- External GPS (M10Q) ---");
       
-    
+         sendData.isValid=true;
         SerialMon.print("Lat: ");
         SerialMon.println(gps.location.lat(), 6);
         sendData.lat=(gps.location.lat()* 1e7);

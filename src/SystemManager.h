@@ -28,4 +28,5 @@ void checkPresence();
 void checkToAdd(GPSData &GPSPosition);
 void sendAlert(int);
 void updateGPSCheckSpeed();
+GPSData getBestPosition();
 #endif

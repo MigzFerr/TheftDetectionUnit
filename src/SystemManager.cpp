@@ -6,7 +6,6 @@
 #define IMUCOOLDOWN 300000
 #define GPSCOOLDOWN 300000
 #define MESSAGEDELAY 60000
-
 #define GPSDataEntries 8640
 GPSData buffer[GPSDataEntries];
 uint16_t head = 0;
@@ -58,19 +57,25 @@ void manageAlert(int level)
 {
     char msg[256];
     char time[256];
-    GPSData pos= latestPosition(); 
-    float lat=pos.lat/1e6; 
-    float lon=pos.lon/1e6;
+    GPSData pos= getBestPosition(); 
+    float lat=pos.lat/1e7; 
+    float lon=pos.lon/1e7;
     int hour = (int)(pos.secondsSinceMidnight/3600);
     int min =(int)(pos.secondsSinceMidnight/60);
-sprintf(msg,"Last known position: https://maps.google.com/?q=%.6f,%.6f",lat,lon);
-sprintf(time,", detected at: %d:%d");
+      Serial.println("-----------------");
+    Serial.println(lon);
+
+    Serial.println(lat);
+    Serial.println("-----------------");
+
+sprintf(msg,"Last known position: https://maps.google.com/?q=%.6f,%.6f \n Battery level: %.2f",lat,lon, getBattVoltage());
+sprintf(time,", detected at: %d:%d", hour, min);
     switch(level){
     case 0: 
     sendNtfy("movement detected,ignition engaged",time, msg, "grey_question", "default");
     break;
     case 1: 
-     sendNtfy("movement detected,no ignition",time, msg, "red_question", "high");
+     sendNtfy("movement detected,no ignition",time, msg, "warning", "high");
      break;
     case 2: 
     sendNtfy("Bike position moved, ignition engaged",time,msg,"warning", "urgent");
@@ -79,7 +84,7 @@ sprintf(time,", detected at: %d:%d");
      sendNtfy("Bike position moved, ignition NOT engaged",time,msg,"warning", "max");
     break;
     case 4: 
-      sendNtfy("Bike tracker still active",time,msg,"tick", "low");
+      sendNtfy("Bike tracker still active",time,msg,"white_check_mark", "low");
       break;
     }
 }
@@ -176,6 +181,18 @@ void checkGPSMovement()
     checkToAdd(GPSPosition);
 }
 
+GPSData getBestPosition() {
+
+   GPSData GPSPosition = externalGPSData();
+    if (GPSPosition.isValid && gps.satellites.value() >= 4) {
+            checkToAdd( GPSPosition);
+            return  GPSPosition;
+    }
+
+    Serial.println("No current fix, using historical position");
+    return latestPosition();
+}
+
 void sendGPSData(GPSData &GPSPosition)
 {
 }
@@ -215,3 +232,6 @@ void checkToAdd(GPSData &GPSPosition)
         }
     }
 }
+
+
+
